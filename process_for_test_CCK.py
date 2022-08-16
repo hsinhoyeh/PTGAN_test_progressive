@@ -209,25 +209,35 @@ def do_inference(cfg, model, query_data):
             feat = f2 + f1
         else:
             feat = reid_model(img)
-
     gen_gallery = gen_gallery[query_poseid]
     gen_P = gen_P[query_poseid]
     gen_neg_vec = gen_neg_vec[query_poseid]
     combine_distmat = np.zeros((1, len(ori_gallery['pid'])))
     distmats = compute_distmat(feat, query_data, gen_gallery, ori_gallery, evaluator, cfg, gen_P, gen_neg_vec, P,
                                neg_vec)
+    current_distmat = np.empty(shape=0)
     current = 0
-    for i, (distmat, gallery_name) in enumerate(tqdm(distmats)):
-        end = distmat.shape[1] + current
-        combine_distmat[..., current:end] = distmat
-        current = end
-
-    print("query stage -- time: ")
     query_paths = query_data['file_name']
     gallary_paths = gen_gallery['file_name']
+
+    for i, (distmat, gallery_name) in enumerate(distmats):
+        end = distmat.shape[1] + current
+        # sorted current result: use sorted_current can choose to return show image
+        current_distmat = np.append(current_distmat, distmat)
+        current_name = gallery_name[:end]
+        zipped = list(zip(current_name, current_distmat))
+        sorted_current = sorted(zipped, key=lambda x: x[1])
+        # combine final result
+        combine_distmat[..., current:end] = distmat
+        current = end
+        print(f"{'-'*10}{end}/{len(gallary_paths)}{'-'*10}")
+
+    print("query stage -- time: ")
+
     df = pd.DataFrame(combine_distmat, index=[query_paths], columns=gallary_paths)
     df.to_csv("similiar_img_distmat.csv")
     # df.sort_values(by=query_paths[0], axis=1, ascending=True) # this place can sort value, and you can pick rank-k
     print('Using totally {:.2f}S to compute'.format(time.time() - start))
 
     print("Finish")
+

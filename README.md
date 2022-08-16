@@ -93,6 +93,13 @@ query_data = get_one_img('../AIC21/veri_pose/query/filename.jpg', transform=tran
 ```
 
 
+Detailed code
+process_for_test_CCK.py
+line: 217
+```bash
+# this place will return progressive distance matrix and gallery img name
+distmats = compute_distmat(feat, query_data, gen_gallery, ori_gallery, evaluator, cfg, gen_P, gen_neg_vec, P, neg_vec)
+```
 ## GitHub Introduction (可以不用看)
 
 **ReID Model Backbone** 
