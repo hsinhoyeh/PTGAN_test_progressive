@@ -3,6 +3,7 @@ import pickle
 import random
 import sys
 import time
+import io
 
 import os
 import numpy as np
@@ -12,9 +13,10 @@ from PIL import Image
 from scipy import ndimage
 from tqdm import tqdm
 
-from reid_model.make_model import make_model
 from utils.metrics import R1_mAP_eval
-from gan.model import Model
+from filepath import modelpath_join
+
+import globals
 
 def frozen_feature_layers(model):
     for name, module in model.named_children():
@@ -128,6 +130,7 @@ def compute_distmat(query_feat, query_data, gen_gallery, ori_gallery, evaluator,
     i = 1
     scale = 50
     current = 0
+    query_feat = torch.as_tensor(query_feat, device=device)
     gen_gallery['feature'] = torch.cat(gen_gallery['feature'], dim=0).to(device)
     ori_gallery['feature'] = torch.cat(ori_gallery['feature'], dim=0).to(device)
     while True:
@@ -157,9 +160,8 @@ def compute_distmat(query_feat, query_data, gen_gallery, ori_gallery, evaluator,
         distmat += gen_distmat * 0.5
         yield distmat, ori_gallery['file_name'],
 
-
-def get_pose(query_data, device="cuda"):
-    model = Model(device)
+def get_pose(query_data, device="cuda") -> int:
+    model = globals.pose_model
     model.reset_model_status()
     model.eval()
     with torch.no_grad():
@@ -169,15 +171,11 @@ def get_pose(query_data, device="cuda"):
         # img = img.unsqueeze(0)
         pose, type = model.get_pose_type(img)
         query_poseid = torch.argmax(pose, dim=1)
-    return query_poseid
+    print(query_poseid.size())
+    return query_poseid.item()
 
-
-def do_inference_reid(cfg, query_data, device="cuda"):
-
-    reid_model = make_model(cfg, num_class=1678)
-    reid_model.load_param(cfg.TEST.WEIGHT)
-    reid_model.to(device)
-    reid_model.eval()
+def do_inference_reid(cfg, query_data, device="cuda") -> []:
+    reid_model = globals.reid_model
     with torch.no_grad():
         img = query_data['origin'].to(device)
         img = img.unsqueeze(0)
@@ -194,13 +192,12 @@ def do_inference_reid(cfg, query_data, device="cuda"):
             feat = f2 + f1
         else:
             feat = reid_model(img)
-    return feat
 
+    return feat.tolist()
 
-def do_inference(cfg, query_data, query_feats, query_poseid):
+def do_inference(cfg, query_data, query_feats, query_poseid, device):
     logger = logging.getLogger("reid_baseline.test")
     logger.info("Enter inferencing")
-    device = "cuda"
 
     # model.eval()
     # model = model.to(device)
@@ -210,8 +207,8 @@ def do_inference(cfg, query_data, query_feats, query_poseid):
     # reid_model.eval()
 
     # Compute Original_query to Original_gallery distance matrix
-    logger = logging.getLogger("reid_baseline.test")
-    logger.info("Enter inferencing")
+    #logger = logging.getLogger("reid_baseline.test")
+    #logger.info("Enter inferencing")
     if device and torch.cuda.device_count() > 1:
         print('Using {} GPUs for inference'.format(torch.cuda.device_count()))
     # num_query = int(len(query_data) / 5)
@@ -220,42 +217,41 @@ def do_inference(cfg, query_data, query_feats, query_poseid):
                             dataset=cfg.DATASETS.NAMES, reranking_track=cfg.TEST.RE_RANKING_TRACK)
     evaluator.reset()
 
-    gallery_path = f'../PTGAN_model/gallery_features/{query_poseid.item()}'
+    gallery_path = modelpath_join('gallery_features/{}'.format(query_poseid))
     with open(os.path.join(gallery_path, 'gen_gallery_feature'), 'rb') as f:
         gen_gallery = pickle.load(f)
     with open(os.path.join(gallery_path, 'gen_gallery_P'), 'rb') as f:
         gen_P = pickle.load(f)
     with open(os.path.join(gallery_path, 'gen_gallery_vec'), 'rb') as f:
         gen_neg_vec = pickle.load(f)
-    with open('../PTGAN_model/gallery_features/orig_gallery_feature_test', 'rb') as f:
+    with open(modelpath_join('gallery_features/orig_gallery_feature_test'), 'rb') as f:
         ori_gallery = pickle.load(f)
-    with open("../PTGAN_model/gallery_features/orig_gallery_P_test", 'rb') as f:
+    with open(modelpath_join("gallery_features/orig_gallery_P_test"), 'rb') as f:
         P = pickle.load(f)
-    with open("../PTGAN_model/gallery_features/orig_gallery_vec_test", 'rb') as f:
+    with open(modelpath_join("gallery_features/orig_gallery_vec_test"), 'rb') as f:
         neg_vec = pickle.load(f)
-
     start = time.time()
-    # # compute gen_gallery and query image
-    # # with torch.no_grad():
-    # #     img = query_data['origin'].to(device)
-    # #     img = img.unsqueeze(0)
-    # #     query_poseid = get_pose(img, device="cuda")
-    # #     feat = do_inference_reid(cfg, img, device=device)
+    # compute gen_gallery and query image
+    # with torch.no_grad():
     #     img = query_data['origin'].to(device)
     #     img = img.unsqueeze(0)
-    #     pose, type = model.get_pose_type(img)
-    #     query_poseid = torch.argmax(pose, dim=1)
-    #     if cfg.TEST.FLIP_FEATS == 'on':
-    #         for i in range(2):
-    #             if i == 1:
-    #                 inv_idx = torch.arange(img.size(3) - 1, -1, -1).long().cuda()
-    #                 img = img.index_select(3, inv_idx)
-    #                 f1 = reid_model(img)
-    #             else:
-    #                 f2 = reid_model(img)
-    #         feat = f2 + f1
-    #     else:
-    #         feat = reid_model(img)
+    #     query_poseid = get_pose(img, device=device)
+    #     feat = reid_stage(cfg, img, device=device)
+    #     # img = query_data['origin'].to(device)
+    #     # img = img.unsqueeze(0)
+    #     # pose, type = model.get_pose_type(img)
+    #     # query_poseid = torch.argmax(pose, dim=1)
+    #     # if cfg.TEST.FLIP_FEATS == 'on':
+    #     #     for i in range(2):
+    #     #         if i == 1:
+    #     #             inv_idx = torch.arange(img.size(3) - 1, -1, -1).long().cuda()
+    #     #             img = img.index_select(3, inv_idx)
+    #     #             f1 = reid_model(img)
+    #     #         else:
+    #     #             f2 = reid_model(img)
+    #     #     feat = f2 + f1
+    #     # else:
+    #     #     feat = reid_model(img)
     # feat = query_feats
     # gen_gallery = gen_gallery[query_poseid]
     # gen_P = gen_P[query_poseid]
@@ -263,6 +259,7 @@ def do_inference(cfg, query_data, query_feats, query_poseid):
     combine_distmat = np.zeros((1, len(ori_gallery['pid'])))
     distmats = compute_distmat(query_feats, query_data, gen_gallery, ori_gallery, evaluator, cfg, gen_P, gen_neg_vec, P,
                                neg_vec, device)
+    
     current_distmat = np.empty(shape=0)
     current = 0
     query_paths = query_data['file_name']

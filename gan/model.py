@@ -102,12 +102,12 @@ class GaussianSmoothing(nn.Module):
 
 class Model(nn.Module):
 
-    def __init__(self):
+    def __init__(self, device):
         super(Model, self).__init__()
         # self.opt = opt
         # self.save_dir = os.path.join(opt.checkpoints, opt.name)
         self.norm_layer = get_norm_layer(norm_type="batch")
-        self.device = "cuda"
+        self.device = device
 
         self._init_models()
         print('---------- Networks initialized -------------')
@@ -126,13 +126,13 @@ class Model(nn.Module):
         self.net_Dp = NLayerDiscriminator(3 + 20, norm_layer=self.norm_layer)
 
         self._load_state_dict(self.net_E,
-                              modelpath_join('code_sw/weights/GAN_stage_2/17_net_E.pth'))
+                              modelpath_join('weights/GAN_stage_2/17_net_E.pth'))
         self._load_state_dict(self.net_G,
-                              modelpath_join('code_sw/weights/GAN_stage_2/17_net_G.pth'))
+                              modelpath_join('weights/GAN_stage_2/17_net_G.pth'))
         self._load_state_dict(self.net_Di,
-                              modelpath_join('code_sw/weights/GAN_stage_2/17_net_Di.pth'))
+                              modelpath_join('weights/GAN_stage_2/17_net_Di.pth'))
         self._load_state_dict(self.net_Dp,
-                              modelpath_join('code_sw/weights/GAN_stage_2/17_net_Dp.pth'))
+                              modelpath_join('weights/GAN_stage_2/17_net_Dp.pth'))
 
         self.net_E = nn.DataParallel(self.net_E).to(self.device)
         self.net_G = nn.DataParallel(self.net_G).to(self.device)
