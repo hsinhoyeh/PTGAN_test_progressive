@@ -10,6 +10,7 @@ from torch.nn import functional as F
 from .networks import get_norm_layer, CustomPoseGenerator, NLayerDiscriminator, remove_module_key, \
     print_network, OrthogonalEncoder, IDDiscriminator
 
+from filepath import modelpath_join
 
 class GaussianSmoothing(nn.Module):
     """
@@ -125,13 +126,13 @@ class Model(nn.Module):
         self.net_Dp = NLayerDiscriminator(3 + 20, norm_layer=self.norm_layer)
 
         self._load_state_dict(self.net_E,
-                              '/home/ANYCOLOR2434/AICITY2021_Track2_DMT/AICITY2021_Track2_DMT-main/code_sw/weights/GAN_stage_2/17_net_E.pth')
+                              modelpath_join('code_sw/weights/GAN_stage_2/17_net_E.pth'))
         self._load_state_dict(self.net_G,
-                              '/home/ANYCOLOR2434/AICITY2021_Track2_DMT/AICITY2021_Track2_DMT-main/code_sw/weights/GAN_stage_2/17_net_G.pth')
+                              modelpath_join('code_sw/weights/GAN_stage_2/17_net_G.pth'))
         self._load_state_dict(self.net_Di,
-                              '/home/ANYCOLOR2434/AICITY2021_Track2_DMT/AICITY2021_Track2_DMT-main/code_sw/weights/GAN_stage_2/17_net_Di.pth')
+                              modelpath_join('code_sw/weights/GAN_stage_2/17_net_Di.pth'))
         self._load_state_dict(self.net_Dp,
-                              '/home/ANYCOLOR2434/AICITY2021_Track2_DMT/AICITY2021_Track2_DMT-main/code_sw/weights/GAN_stage_2/17_net_Dp.pth')
+                              modelpath_join('code_sw/weights/GAN_stage_2/17_net_Dp.pth'))
 
         self.net_E = nn.DataParallel(self.net_E).to(self.device)
         self.net_G = nn.DataParallel(self.net_G).to(self.device)
