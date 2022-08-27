@@ -8,7 +8,7 @@ from utils import transforms
 from config import cfg
 from utils.logger import setup_logger
 from process_for_test_CCK import do_inference
-from gan.model import Model
+# from gan.model import Model
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 
@@ -64,9 +64,9 @@ def main():
                                     normalizer])
 
     query_data = get_one_img('../AIC21/veri_pose/query/0002_c002_00030600_0.jpg', transform=transform)
-    model = Model()
-    model.reset_model_status()
-    do_inference(cfg, model, query_data)
+    # model = Model()
+    # model.reset_model_status()
+    do_inference(cfg, query_data)
 
 
 if __name__ == '__main__':
