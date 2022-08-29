@@ -155,23 +155,34 @@ def compute_distmat(query_feat, query_data, gen_gallery, ori_gallery, evaluator,
         yield distmat, ori_gallery['file_name'],
 
 
-def get_pose(img, device="cuda"):
+
+def get_pose(query_data, device="cuda"):
     model = Model()
     model.reset_model_status()
     model.eval()
     model = model.to(device)
     with torch.no_grad():
+        img = query_data['origin'].to(device)
+        img = img.unsqueeze(0)
+        # img = query_data['origin'].to(device)
+        # img = img.unsqueeze(0)
         pose, type = model.get_pose_type(img)
         query_poseid = torch.argmax(pose, dim=1)
     return query_poseid
 
 
-def reid_stage(cfg, img, device="cuda"):
+
+def do_inference_reid(cfg, query_data, device="cuda"):
+
     reid_model = make_model(cfg, num_class=1678)
     reid_model.load_param(cfg.TEST.WEIGHT)
     reid_model.to(device)
     reid_model.eval()
     with torch.no_grad():
+        img = query_data['origin'].to(device)
+        img = img.unsqueeze(0)
+        # img = query_data['origin'].to(device)
+        # img = img.unsqueeze(0)
         if cfg.TEST.FLIP_FEATS == 'on':
             for i in range(2):
                 if i == 1:
@@ -186,7 +197,7 @@ def reid_stage(cfg, img, device="cuda"):
     return feat
 
 
-def do_inference(cfg, query_data):
+def do_inference(cfg, query_data, query_feats, query_poseid):
     logger = logging.getLogger("reid_baseline.test")
     logger.info("Enter inferencing")
     device = "cuda"
@@ -222,26 +233,28 @@ def do_inference(cfg, query_data):
 
     start = time.time()
     # compute gen_gallery and query image
-    with torch.no_grad():
-        img = query_data['origin'].to(device)
-        img = img.unsqueeze(0)
-        query_poseid = get_pose(img, device=device)
-        feat = reid_stage(cfg, img, device=device)
-        # img = query_data['origin'].to(device)
-        # img = img.unsqueeze(0)
-        # pose, type = model.get_pose_type(img)
-        # query_poseid = torch.argmax(pose, dim=1)
-        # if cfg.TEST.FLIP_FEATS == 'on':
-        #     for i in range(2):
-        #         if i == 1:
-        #             inv_idx = torch.arange(img.size(3) - 1, -1, -1).long().cuda()
-        #             img = img.index_select(3, inv_idx)
-        #             f1 = reid_model(img)
-        #         else:
-        #             f2 = reid_model(img)
-        #     feat = f2 + f1
-        # else:
-        #     feat = reid_model(img)
+    # with torch.no_grad():
+    #     img = query_data['origin'].to(device)
+    #     img = img.unsqueeze(0)
+    #     query_poseid = get_pose(img, device=device)
+    #     feat = reid_stage(cfg, img, device=device)
+    #     # img = query_data['origin'].to(device)
+    #     # img = img.unsqueeze(0)
+    #     # pose, type = model.get_pose_type(img)
+    #     # query_poseid = torch.argmax(pose, dim=1)
+    #     # if cfg.TEST.FLIP_FEATS == 'on':
+    #     #     for i in range(2):
+    #     #         if i == 1:
+    #     #             inv_idx = torch.arange(img.size(3) - 1, -1, -1).long().cuda()
+    #     #             img = img.index_select(3, inv_idx)
+    #     #             f1 = reid_model(img)
+    #     #         else:
+    #     #             f2 = reid_model(img)
+    #     #     feat = f2 + f1
+    #     # else:
+    #     #     feat = reid_model(img)
+    feat = query_feats
+
     gen_gallery = gen_gallery[query_poseid]
     gen_P = gen_P[query_poseid]
     gen_neg_vec = gen_neg_vec[query_poseid]
