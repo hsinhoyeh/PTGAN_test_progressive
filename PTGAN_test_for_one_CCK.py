@@ -1,4 +1,5 @@
 import warnings
+
 warnings.filterwarnings("ignore")
 import os
 import torch
@@ -15,7 +16,6 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 
 def get_one_img(query_img_path, transform):
-
     img = Image.open(query_img_path).convert("RGB")
     img = transform(img)
     pid = int(query_img_path[-24:-20])
@@ -71,7 +71,7 @@ def main():
 
     # model = Model()
     # model.reset_model_status()
-    # do_inference(cfg, query_data)
+    # do_inference(cfg, model, query_data, None)
 
 
 if __name__ == '__main__':
